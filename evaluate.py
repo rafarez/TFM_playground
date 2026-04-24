@@ -33,6 +33,9 @@ def build_parser() -> argparse.ArgumentParser:
                    help="Random seed controlling both splits (default: 42).")
     p.add_argument("--auc_only", action="store_true",
                    help="Only compute ROC AUC (skip accuracy and log-loss).")
+    p.add_argument("--batch_size", type=int, default=128,
+                   help="Test-time batch size for predict_proba chunks (default: 128). "
+                        "Lower this if you hit CUDA OOM on large test sets.")
     p.add_argument("--output_dir", default="experiments",
                    help="Root directory for experiment folders (default: experiments).")
     p.add_argument("--cache_dir", default=None,

@@ -97,7 +97,11 @@ def run_evaluation(
             try:
                 model = model_factory()
                 model.fit(X_tr, y_tr)
-                y_proba = model.predict_proba(X_te)
+                proba_chunks = [
+                    model.predict_proba(X_te[start:start + args.batch_size])
+                    for start in range(0, len(X_te), args.batch_size)
+                ]
+                y_proba = np.concatenate(proba_chunks, axis=0)
                 y_pred = y_proba.argmax(axis=1)
                 metrics = compute_metrics(
                     y_te, y_pred, y_proba, classes=classes, auc_only=args.auc_only
