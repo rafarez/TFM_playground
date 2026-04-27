@@ -1,0 +1,20 @@
+{
+  "args": {
+    "model": "nanotabpfn",
+    "benchmark": "openml-cc18",
+    "task_ids": null,
+    "protocol": "fixed",
+    "test_size": 0.5,
+    "seed": 42,
+    "auc_only": false,
+    "batch_size": 128,
+    "output_dir": "experiments",
+    "cache_dir": null,
+    "checkpoint": null,
+    "device": null,
+    "num_mem_chunks": 8,
+    "api_key": null
+  },
+  "git_commit": "150a61f767121e6c6923f3849c474718d59923b4",
+  "timestamp": "2026-04-27T11:01:56"
+}
