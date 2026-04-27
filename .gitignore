@@ -1,11 +1,9 @@
-checkpoints/
 workdir/
 wandb/
 logs/
 log/
 runs/
 tfmplayground_jobs/
-experiments/
 *.pth
 *.h5
 
