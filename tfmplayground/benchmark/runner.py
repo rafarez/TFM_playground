@@ -68,12 +68,16 @@ def run_evaluation(
     rows: list[dict] = []
     for task_id in task_ids:
         try:
-            task = load_task(task_id)
+            task = load_task(
+                task_id,
+                max_n_features=args.max_n_features,
+                max_n_samples=args.max_n_samples,
+            )
         except Exception as e:
             print(f"[skip] task {task_id}: failed to load ({type(e).__name__}: {e})")
             continue
         if task is None:
-            print(f"[skip] task {task_id}: not a classification task")
+            print(f"[skip] task {task_id}: not classification or exceeds size limits")
             continue
 
         classes = np.arange(len(task.classes))

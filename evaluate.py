@@ -21,8 +21,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--model", choices=["nanotabpfn", "seldon"], default="nanotabpfn",
                    help="Which model to evaluate (default: nanotabpfn).")
-    p.add_argument("--benchmark", default="openml-cc18",
-                   help="Benchmark suite name (default: openml-cc18).")
+    p.add_argument("--benchmark", default="tabarena",
+                   help="Benchmark suite name (default: tabarena).")
     p.add_argument("--task_ids", default=None,
                    help="Comma-separated OpenML task IDs. Overrides --benchmark if set.")
     p.add_argument("--protocol", choices=["fixed", "5fold"], default="fixed",
@@ -40,6 +40,10 @@ def build_parser() -> argparse.ArgumentParser:
                    help="Root directory for experiment folders (default: experiments).")
     p.add_argument("--cache_dir", default=None,
                    help="OpenML cache directory (default: OpenML default).")
+    p.add_argument("--max_n_features", type=int, default=5000,
+                   help="Skip tasks with more than this many features (default: 5000).")
+    p.add_argument("--max_n_samples", type=int, default=10_000,
+                   help="Skip tasks with more than this many instances (default: 10000).")
 
     # nanotabpfn-specific
     p.add_argument("--checkpoint", default=None,

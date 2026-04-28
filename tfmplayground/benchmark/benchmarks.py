@@ -12,6 +12,7 @@ from sklearn.preprocessing import LabelEncoder
 BENCHMARKS: dict[str, str] = {
     # CLI name -> OpenML study alias
     "openml-cc18": "OpenML-CC18",
+    "tabarena": "tabarena-v0.1",
     # Additional benchmarks (tabarena, custom splits, ...) will be registered here.
 }
 
@@ -37,13 +38,25 @@ def load_benchmark_tasks(name: str, cache_dir: str | None = None) -> list[int]:
     return list(suite.tasks)
 
 
-def load_task(task_id: int) -> Task | None:
+def load_task(
+    task_id: int,
+    max_n_features: int | None = None,
+    max_n_samples: int | None = None,
+) -> Task | None:
     """Loads an OpenML classification task and label-encodes its target.
-    Returns `None` when the task is not a supervised classification task."""
+
+    Returns `None` when the task is not a supervised classification task or
+    when the dataset exceeds `max_n_features` / `max_n_samples`. The size
+    check happens before downloading the actual data so oversized tasks are
+    skipped cheaply."""
     task = openml.tasks.get_task(task_id, download_splits=False)
     if task.task_type_id != TaskType.SUPERVISED_CLASSIFICATION:
         return None
     dataset = task.get_dataset(download_data=False)
+    if max_n_features is not None and dataset.qualities["NumberOfFeatures"] > max_n_features:
+        return None
+    if max_n_samples is not None and dataset.qualities["NumberOfInstances"] > max_n_samples:
+        return None
     X, y, _, _ = dataset.get_data(target=task.target_name, dataset_format="dataframe")
     le = LabelEncoder()
     y_enc = le.fit_transform(y.to_numpy())
