@@ -1,0 +1,22 @@
+{
+  "args": {
+    "model": "nanotabpfn",
+    "benchmark": "tabarena",
+    "task_ids": null,
+    "protocol": "fixed",
+    "test_size": 0.2,
+    "seed": 42,
+    "auc_only": false,
+    "batch_size": 128,
+    "output_dir": "experiments",
+    "cache_dir": null,
+    "max_n_features": 10000,
+    "max_n_samples": 100000,
+    "checkpoint": null,
+    "device": null,
+    "num_mem_chunks": 8,
+    "api_key": null
+  },
+  "git_commit": "fda2bba5f25d94ae5ab6046ab7d0fe5369cb2209",
+  "timestamp": "2026-04-29T09:13:59"
+}
