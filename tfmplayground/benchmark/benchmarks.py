@@ -41,7 +41,6 @@ def load_benchmark_tasks(name: str, cache_dir: str | None = None) -> list[int]:
 def load_task(
     task_id: int,
     max_n_features: int | None = None,
-    max_n_samples: int | None = None,
 ) -> Task | None:
     """Loads an OpenML classification task and label-encodes its target.
 
@@ -54,8 +53,6 @@ def load_task(
         return None
     dataset = task.get_dataset(download_data=False)
     if max_n_features is not None and dataset.qualities["NumberOfFeatures"] > max_n_features:
-        return None
-    if max_n_samples is not None and dataset.qualities["NumberOfInstances"] > max_n_samples:
         return None
     X, y, _, _ = dataset.get_data(target=task.target_name, dataset_format="dataframe")
     le = LabelEncoder()

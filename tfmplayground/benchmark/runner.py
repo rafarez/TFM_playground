@@ -71,7 +71,6 @@ def run_evaluation(
             task = load_task(
                 task_id,
                 max_n_features=args.max_n_features,
-                max_n_samples=args.max_n_samples,
             )
         except Exception as e:
             print(f"[skip] task {task_id}: failed to load ({type(e).__name__}: {e})")
@@ -85,6 +84,9 @@ def run_evaluation(
             iter_splits(task.X, task.y, protocol=args.protocol, seed=args.seed,
                         test_size=args.test_size)
         ):
+            if args.max_n_samples is not None and len(tr_idx) > args.max_n_samples:
+                tr_idx = tr_idx[:args.max_n_samples]
+
             X_tr, X_te = task.X[tr_idx], task.X[te_idx]
             y_tr, y_te = task.y[tr_idx], task.y[te_idx]
             base = {
