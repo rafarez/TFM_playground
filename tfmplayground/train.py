@@ -103,16 +103,21 @@ def train(
             model.eval()
             optimizer.eval()
 
+            model_unwrapped = model.module if multi_gpu else model
+            architecture = {
+                "num_layers": int(model_unwrapped.num_layers),
+                "embedding_size": int(model_unwrapped.embedding_size),
+                "num_attention_heads": int(model_unwrapped.num_attention_heads),
+                "mlp_hidden_size": int(model_unwrapped.mlp_hidden_size),
+                "num_outputs": int(model_unwrapped.num_outputs),
+            }
+            for flag in ("target_aware", "random_perturbations", "target_encoder_use_embedding"):
+                if hasattr(model_unwrapped, flag):
+                    architecture[flag] = bool(getattr(model_unwrapped, flag))
             training_state = {
                 "epoch": epoch,
-                "architecture": {
-                    "num_layers": int((model.module if multi_gpu else model).num_layers),
-                    "embedding_size": int((model.module if multi_gpu else model).embedding_size),
-                    "num_attention_heads": int((model.module if multi_gpu else model).num_attention_heads),
-                    "mlp_hidden_size": int((model.module if multi_gpu else model).mlp_hidden_size),
-                    "num_outputs": int((model.module if multi_gpu else model).num_outputs),
-                },
-                "model": (model.module if multi_gpu else model).state_dict(),
+                "architecture": architecture,
+                "model": model_unwrapped.state_dict(),
                 "optimizer": optimizer.state_dict(),
             }
             torch.save(training_state, work_dir + "/latest_checkpoint.pth")

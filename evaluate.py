@@ -19,7 +19,8 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description="Classification benchmark harness for TFM-Playground models."
     )
-    p.add_argument("--model", choices=["nanotabpfn", "seldon"], default="nanotabpfn",
+    p.add_argument("--model", choices=["nanotabpfn", "mynanotabpfn", "seldon"],
+                   default="nanotabpfn",
                    help="Which model to evaluate (default: nanotabpfn).")
     p.add_argument("--benchmark", default="tabarena",
                    help="Benchmark suite name (default: tabarena).")
@@ -53,6 +54,21 @@ def build_parser() -> argparse.ArgumentParser:
                    help="[nanotabpfn] torch device (e.g. 'cuda', 'cpu').")
     p.add_argument("--num_mem_chunks", type=int, default=8,
                    help="[nanotabpfn] Attention chunking factor (default: 8).")
+
+    # mynanotabpfn-specific (Priority 1 modification flags)
+    p.add_argument("--target_aware", action="store_true",
+                   help="[mynanotabpfn] Mod 2.1: add class embedding to feature cells "
+                        "of training rows before the transformer layers.")
+    p.add_argument("--random_perturbations", action="store_true",
+                   help="[mynanotabpfn] Mod 2.3: add per-column random perturbations "
+                        "to break feature-column symmetry.")
+    p.add_argument("--target_encoder_use_embedding", action="store_true",
+                   help="[mynanotabpfn] Mod 2.11: use nn.Embedding for the target "
+                        "column instead of nn.Linear.")
+    p.add_argument("--n_perturbation_samples", type=int, default=1,
+                   help="[mynanotabpfn] Number of random-perturbation draws to average "
+                        "at inference (default: 1). Set to 3 when --random_perturbations "
+                        "is active.")
 
     # seldon-specific
     p.add_argument("--api_key", default=None,

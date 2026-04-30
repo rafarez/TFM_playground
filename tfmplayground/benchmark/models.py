@@ -88,6 +88,63 @@ class SeldonEvalModel(BaseEvaluatedModel):
         return proba
 
 
+class MyNanoTabPFNEvalModel(BaseEvaluatedModel):
+    """Wraps NanoTabPFNClassifier backed by MyNanoTabPFNModel (Priority 1 mods).
+
+    Accepts the same checkpoint= / device= / num_mem_chunks= arguments as
+    NanoTabPFNEvalModel, plus the three P1 flags and n_perturbation_samples.
+    When a checkpoint is loaded its flags override the constructor arguments.
+    """
+
+    name = "mynanotabpfn"
+
+    def __init__(
+        self,
+        checkpoint: str | None = None,
+        device: str | None = None,
+        num_mem_chunks: int = 8,
+        target_aware: bool = False,
+        random_perturbations: bool = False,
+        target_encoder_use_embedding: bool = False,
+        n_perturbation_samples: int = 1,
+    ):
+        from tfmplayground.interface import NanoTabPFNClassifier
+        from tfmplayground.models.my_models import MyNanoTabPFNModel
+
+        if checkpoint is not None:
+            # Checkpoint carries its own flags; init_model_from_state_dict_file
+            # will build the right model type automatically.
+            from tfmplayground.interface import init_model_from_state_dict_file
+            model_instance = init_model_from_state_dict_file(checkpoint)
+        else:
+            # No pretrained checkpoint — build a fresh MyNanoTabPFNModel.
+            # Mirrors the hyperparameters of the released nanotabpfn checkpoint.
+            model_instance = MyNanoTabPFNModel(
+                embedding_size=192,
+                num_attention_heads=4,
+                mlp_hidden_size=768,
+                num_layers=6,
+                num_outputs=10,
+                target_aware=target_aware,
+                random_perturbations=random_perturbations,
+                target_encoder_use_embedding=target_encoder_use_embedding,
+            )
+
+        self._model = NanoTabPFNClassifier(
+            model=model_instance,
+            device=device,
+            num_mem_chunks=num_mem_chunks,
+            n_perturbation_samples=n_perturbation_samples,
+        )
+        self._model.model.eval()
+
+    def fit(self, X, y):
+        self._model.fit(X, y)
+
+    def predict_proba(self, X):
+        return self._model.predict_proba(X)
+
+
 def build_model(args) -> BaseEvaluatedModel:
     """Instantiates a `BaseEvaluatedModel` from argparse CLI arguments."""
     if args.model == "nanotabpfn":
@@ -95,6 +152,16 @@ def build_model(args) -> BaseEvaluatedModel:
             checkpoint=args.checkpoint,
             device=args.device,
             num_mem_chunks=args.num_mem_chunks,
+        )
+    if args.model == "mynanotabpfn":
+        return MyNanoTabPFNEvalModel(
+            checkpoint=args.checkpoint,
+            device=args.device,
+            num_mem_chunks=args.num_mem_chunks,
+            target_aware=args.target_aware,
+            random_perturbations=args.random_perturbations,
+            target_encoder_use_embedding=args.target_encoder_use_embedding,
+            n_perturbation_samples=args.n_perturbation_samples,
         )
     if args.model == "seldon":
         key = args.api_key or os.environ.get("NEURALK_API_KEY")

@@ -14,19 +14,35 @@ from sklearn.preprocessing import FunctionTransformer, OrdinalEncoder
 from tfmplayground.models.nanotabpfn import NanoTabPFNModel
 from tfmplayground.utils import get_default_device
 
+_P1_FLAGS = ("target_aware", "random_perturbations", "target_encoder_use_embedding")
+
 
 def init_model_from_state_dict_file(file_path):
-    """
-    reads model architecture from state dict, instantiates the architecture and loads the weights
-    """
+    """Loads a model checkpoint, auto-detecting whether it uses the modified
+    MyNanoTabPFNModel (any P1 flag present in architecture dict) or the
+    baseline NanoTabPFNModel."""
     state_dict = torch.load(file_path, map_location=torch.device("cpu"))
-    model = NanoTabPFNModel(
-        num_attention_heads=state_dict["architecture"]["num_attention_heads"],
-        embedding_size=state_dict["architecture"]["embedding_size"],
-        mlp_hidden_size=state_dict["architecture"]["mlp_hidden_size"],
-        num_layers=state_dict["architecture"]["num_layers"],
-        num_outputs=state_dict["architecture"]["num_outputs"],
-    )
+    arch = state_dict["architecture"]
+    if any(f in arch for f in _P1_FLAGS):
+        from tfmplayground.models.my_models import MyNanoTabPFNModel
+        model = MyNanoTabPFNModel(
+            num_attention_heads=arch["num_attention_heads"],
+            embedding_size=arch["embedding_size"],
+            mlp_hidden_size=arch["mlp_hidden_size"],
+            num_layers=arch["num_layers"],
+            num_outputs=arch["num_outputs"],
+            target_encoder_use_embedding=arch.get("target_encoder_use_embedding", False),
+            target_aware=arch.get("target_aware", False),
+            random_perturbations=arch.get("random_perturbations", False),
+        )
+    else:
+        model = NanoTabPFNModel(
+            num_attention_heads=arch["num_attention_heads"],
+            embedding_size=arch["embedding_size"],
+            mlp_hidden_size=arch["mlp_hidden_size"],
+            num_layers=arch["num_layers"],
+            num_outputs=arch["num_outputs"],
+        )
     model.load_state_dict(state_dict["model"])
     return model
 
@@ -96,6 +112,7 @@ class NanoTabPFNClassifier:
         model: NanoTabPFNModel | str | None = None,
         device: None | str | torch.device = None,
         num_mem_chunks: int = 8,
+        n_perturbation_samples: int = 1,
     ):
         if device is None:
             device = get_default_device()
@@ -114,6 +131,7 @@ class NanoTabPFNClassifier:
         self.model = model.to(device)
         self.device = device
         self.num_mem_chunks = num_mem_chunks
+        self.n_perturbation_samples = n_perturbation_samples
 
     def fit(self, X_train: np.ndarray, y_train: np.ndarray):
         """stores X_train and y_train for later use, also computes the highest class number occuring in num_classes"""
@@ -127,24 +145,30 @@ class NanoTabPFNClassifier:
         predicted_probabilities = self.predict_proba(X_test)
         return predicted_probabilities.argmax(axis=1)
 
-    def predict_proba(self, X_test: np.ndarray) -> np.ndarray:
-        """
-        creates (x,y), runs it through our PyTorch Model, cuts off the classes that didn't appear in the training data
-        and applies softmax to get the probabilities
-        """
+    def _predict_proba_once(self, X_test: np.ndarray) -> np.ndarray:
+        """Single forward pass — returns softmax probabilities for X_test."""
         x = np.concatenate((self.X_train, self.feature_preprocessor.transform(X_test)))
         y = self.y_train
         with torch.no_grad():
-            x = torch.from_numpy(x).unsqueeze(0).to(torch.float).to(self.device)  # introduce batch size 1
+            x = torch.from_numpy(x).unsqueeze(0).to(torch.float).to(self.device)
             y = torch.from_numpy(y).unsqueeze(0).to(torch.float).to(self.device)
             out = self.model(
                 (x, y), train_test_split_index=len(self.X_train), num_mem_chunks=self.num_mem_chunks
-            ).squeeze(0)  # remove batch size 1
-            # our pretrained classifier supports up to num_outputs classes, if the dataset has less we cut off the rest
+            ).squeeze(0)
             out = out[:, : self.num_classes]
-            # apply softmax to get a probability distribution
-            probabilities = F.softmax(out, dim=1)
-            return probabilities.to("cpu").numpy()
+            return F.softmax(out, dim=1).to("cpu").numpy()
+
+    def predict_proba(self, X_test: np.ndarray) -> np.ndarray:
+        """Returns class probabilities for X_test.
+
+        When n_perturbation_samples > 1 (intended for use with Mod 2.3
+        random_perturbations), runs n_perturbation_samples forward passes
+        with independent random draws and averages the output probabilities.
+        """
+        if self.n_perturbation_samples <= 1:
+            return self._predict_proba_once(X_test)
+        draws = [self._predict_proba_once(X_test) for _ in range(self.n_perturbation_samples)]
+        return np.mean(draws, axis=0)
 
 
 class NanoTabPFNRegressor:
