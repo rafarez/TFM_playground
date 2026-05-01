@@ -8,7 +8,7 @@ from tfmplayground.callbacks import ConsoleLoggerCallback, WandbLoggerCallback
 from tfmplayground.evaluation import TABARENA_TASKS, TOY_TASKS_CLASSIFICATION, get_openml_predictions
 from tfmplayground.external_priors import PriorDumpDataLoader
 from tfmplayground.interface import NanoTabPFNClassifier
-from tfmplayground.models.nanotabpfn import NanoTabPFNModel
+from tfmplayground.models.my_models import MyNanoTabPFNModel
 from tfmplayground.train import train
 from tfmplayground.utils import get_default_device, set_randomness_seed
 
@@ -38,6 +38,30 @@ parser.add_argument(
     help="name of the training run, will be used to store the training checkpoints and for WandB logging",
 )
 
+# Priority 1 architectural modifications
+parser.add_argument("--target_aware", action="store_true",
+                    help="Mod 2.1: add class embedding to feature cells of training rows.")
+parser.add_argument("--random_perturbations", action="store_true",
+                    help="Mod 2.3: add per-column random perturbations to break feature symmetry.")
+parser.add_argument("--target_encoder_use_embedding", action="store_true",
+                    help="Mod 2.11: use nn.Embedding for the target column with an unknown token for test rows.")
+
+# Priority 2 architectural modifications
+parser.add_argument("--prenorm", action="store_true",
+                    help="Mod 2.5: pre-norm LayerNorm in all sublayers plus a final LayerNorm before the decoder.")
+parser.add_argument("--cls_compression", action="store_true",
+                    help="Mod 2.4: [CLS]-based row compression with Stage 1 bi-attention and Stage 2 plain self-attention.")
+parser.add_argument("--n_cls_tokens", type=int, default=2,
+                    help="Mod 2.4: number of [CLS] tokens per row (default: 2).")
+parser.add_argument("--n_stage1_layers", type=int, default=3,
+                    help="Mod 2.4: bi-attention layers before row compression (default: 3). "
+                         "Used only when --cls_compression is set; --layers is ignored.")
+parser.add_argument("--n_stage2_layers", type=int, default=3,
+                    help="Mod 2.4: plain self-attention layers after row compression (default: 3). "
+                         "Used only when --cls_compression is set; --layers is ignored.")
+parser.add_argument("--icl_target_embedding", action="store_true",
+                    help="Mod 2.4: inject class label into compressed row embeddings before Stage 2.")
+
 args = parser.parse_args()
 
 set_randomness_seed(2402)
@@ -57,12 +81,23 @@ prior = PriorDumpDataLoader(
 
 criterion = nn.CrossEntropyLoss()
 
-model = NanoTabPFNModel(
+model = MyNanoTabPFNModel(
     num_attention_heads=args.heads,
     embedding_size=args.embeddingsize,
     mlp_hidden_size=args.hiddensize,
     num_layers=args.layers,
     num_outputs=prior.max_num_classes,
+    # P1
+    target_aware=args.target_aware,
+    random_perturbations=args.random_perturbations,
+    target_encoder_use_embedding=args.target_encoder_use_embedding,
+    # P2
+    prenorm=args.prenorm,
+    cls_compression=args.cls_compression,
+    n_cls_tokens=args.n_cls_tokens,
+    n_stage1_layers=args.n_stage1_layers,
+    n_stage2_layers=args.n_stage2_layers,
+    icl_target_embedding=args.icl_target_embedding,
 )
 
 if ckpt:
