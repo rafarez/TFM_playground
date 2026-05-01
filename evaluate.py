@@ -55,20 +55,50 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--num_mem_chunks", type=int, default=8,
                    help="[nanotabpfn] Attention chunking factor (default: 8).")
 
-    # mynanotabpfn-specific (Priority 1 modification flags)
+    # mynanotabpfn — Priority 1 flags
     p.add_argument("--target_aware", action="store_true",
-                   help="[mynanotabpfn] Mod 2.1: add class embedding to feature cells "
-                        "of training rows before the transformer layers.")
+                   help="[mynanotabpfn] Mod 2.1: class embedding added to every "
+                        "feature cell of training rows before the transformer layers.")
     p.add_argument("--random_perturbations", action="store_true",
-                   help="[mynanotabpfn] Mod 2.3: add per-column random perturbations "
+                   help="[mynanotabpfn] Mod 2.3: per-column random perturbations "
                         "to break feature-column symmetry.")
     p.add_argument("--target_encoder_use_embedding", action="store_true",
-                   help="[mynanotabpfn] Mod 2.11: use nn.Embedding for the target "
-                        "column instead of nn.Linear.")
+                   help="[mynanotabpfn] Mod 2.11: nn.Embedding for the target column "
+                        "with a learnable unknown token for test rows.")
     p.add_argument("--n_perturbation_samples", type=int, default=1,
-                   help="[mynanotabpfn] Number of random-perturbation draws to average "
-                        "at inference (default: 1). Set to 3 when --random_perturbations "
-                        "is active.")
+                   help="[mynanotabpfn] Perturbation draws averaged at inference "
+                        "(default: 1). Set to 3 when --random_perturbations is active.")
+
+    # mynanotabpfn — Priority 2 flags
+    p.add_argument("--prenorm", action="store_true",
+                   help="[mynanotabpfn] Mod 2.5: pre-norm LayerNorm in all sublayers "
+                        "plus a final LayerNorm before the decoder.")
+    p.add_argument("--cls_compression", action="store_true",
+                   help="[mynanotabpfn] Mod 2.4: [CLS]-based row compression — "
+                        "Stage 1 bi-attention + compress to CLS embeddings + "
+                        "Stage 2 plain self-attention.")
+    p.add_argument("--n_cls_tokens", type=int, default=2,
+                   help="[mynanotabpfn] Mod 2.4: number of [CLS] tokens per row "
+                        "(default: 2).")
+    p.add_argument("--n_stage1_layers", type=int, default=3,
+                   help="[mynanotabpfn] Mod 2.4: bi-attention layers before "
+                        "compression (default: 3).")
+    p.add_argument("--n_stage2_layers", type=int, default=3,
+                   help="[mynanotabpfn] Mod 2.4: plain self-attention layers after "
+                        "compression (default: 3).")
+    p.add_argument("--icl_target_embedding", action="store_true",
+                   help="[mynanotabpfn] Mod 2.4: inject class label into compressed "
+                        "row embeddings before Stage 2 (TabICLv2 double injection).")
+
+    # Mod 2.6 — feature subspace bagging (applies to nanotabpfn and mynanotabpfn)
+    p.add_argument("--max_features", type=int, default=None,
+                   help="Mod 2.6: max features per forward pass. When the dataset has "
+                        "more features, random subsets of this size are averaged "
+                        "(feature subspace bagging). Recommended value: 3 (training "
+                        "distribution).")
+    p.add_argument("--n_feature_subsets", type=int, default=None,
+                   help="Mod 2.6: number of feature subsets to average. Defaults to "
+                        "ceil(d / max_features) when --max_features is set.")
 
     # seldon-specific
     p.add_argument("--api_key", default=None,

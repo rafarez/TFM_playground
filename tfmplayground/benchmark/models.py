@@ -34,6 +34,8 @@ class NanoTabPFNEvalModel(BaseEvaluatedModel):
         checkpoint: str | None = None,
         device: str | None = None,
         num_mem_chunks: int = 8,
+        max_features: int | None = None,
+        n_feature_subsets: int | None = None,
     ):
         from tfmplayground import NanoTabPFNClassifier
 
@@ -41,6 +43,8 @@ class NanoTabPFNEvalModel(BaseEvaluatedModel):
             model=checkpoint,
             device=device,
             num_mem_chunks=num_mem_chunks,
+            max_features=max_features,
+            n_feature_subsets=n_feature_subsets,
         )
         self._model.model.eval()
 
@@ -89,11 +93,12 @@ class SeldonEvalModel(BaseEvaluatedModel):
 
 
 class MyNanoTabPFNEvalModel(BaseEvaluatedModel):
-    """Wraps NanoTabPFNClassifier backed by MyNanoTabPFNModel (Priority 1 mods).
+    """Wraps NanoTabPFNClassifier backed by MyNanoTabPFNModel (P1 + P2 mods).
 
-    Accepts the same checkpoint= / device= / num_mem_chunks= arguments as
-    NanoTabPFNEvalModel, plus the three P1 flags and n_perturbation_samples.
-    When a checkpoint is loaded its flags override the constructor arguments.
+    When a checkpoint is given its stored flags take precedence over the
+    constructor arguments (the checkpoint was trained with specific flags).
+    When no checkpoint is given a fresh model is built from the constructor
+    arguments using the released baseline hyperparameters (d=192, 6 layers).
     """
 
     name = "mynanotabpfn"
@@ -103,22 +108,28 @@ class MyNanoTabPFNEvalModel(BaseEvaluatedModel):
         checkpoint: str | None = None,
         device: str | None = None,
         num_mem_chunks: int = 8,
+        # P1
         target_aware: bool = False,
         random_perturbations: bool = False,
         target_encoder_use_embedding: bool = False,
         n_perturbation_samples: int = 1,
+        # P2
+        prenorm: bool = False,
+        cls_compression: bool = False,
+        n_cls_tokens: int = 2,
+        n_stage1_layers: int = 3,
+        n_stage2_layers: int = 3,
+        icl_target_embedding: bool = False,
+        # Mod 2.6
+        max_features: int | None = None,
+        n_feature_subsets: int | None = None,
     ):
-        from tfmplayground.interface import NanoTabPFNClassifier
+        from tfmplayground.interface import NanoTabPFNClassifier, init_model_from_state_dict_file
         from tfmplayground.models.my_models import MyNanoTabPFNModel
 
         if checkpoint is not None:
-            # Checkpoint carries its own flags; init_model_from_state_dict_file
-            # will build the right model type automatically.
-            from tfmplayground.interface import init_model_from_state_dict_file
             model_instance = init_model_from_state_dict_file(checkpoint)
         else:
-            # No pretrained checkpoint — build a fresh MyNanoTabPFNModel.
-            # Mirrors the hyperparameters of the released nanotabpfn checkpoint.
             model_instance = MyNanoTabPFNModel(
                 embedding_size=192,
                 num_attention_heads=4,
@@ -128,6 +139,12 @@ class MyNanoTabPFNEvalModel(BaseEvaluatedModel):
                 target_aware=target_aware,
                 random_perturbations=random_perturbations,
                 target_encoder_use_embedding=target_encoder_use_embedding,
+                prenorm=prenorm,
+                cls_compression=cls_compression,
+                n_cls_tokens=n_cls_tokens,
+                n_stage1_layers=n_stage1_layers,
+                n_stage2_layers=n_stage2_layers,
+                icl_target_embedding=icl_target_embedding,
             )
 
         self._model = NanoTabPFNClassifier(
@@ -135,6 +152,8 @@ class MyNanoTabPFNEvalModel(BaseEvaluatedModel):
             device=device,
             num_mem_chunks=num_mem_chunks,
             n_perturbation_samples=n_perturbation_samples,
+            max_features=max_features,
+            n_feature_subsets=n_feature_subsets,
         )
         self._model.model.eval()
 
@@ -152,6 +171,8 @@ def build_model(args) -> BaseEvaluatedModel:
             checkpoint=args.checkpoint,
             device=args.device,
             num_mem_chunks=args.num_mem_chunks,
+            max_features=args.max_features,
+            n_feature_subsets=args.n_feature_subsets,
         )
     if args.model == "mynanotabpfn":
         return MyNanoTabPFNEvalModel(
@@ -162,6 +183,14 @@ def build_model(args) -> BaseEvaluatedModel:
             random_perturbations=args.random_perturbations,
             target_encoder_use_embedding=args.target_encoder_use_embedding,
             n_perturbation_samples=args.n_perturbation_samples,
+            prenorm=args.prenorm,
+            cls_compression=args.cls_compression,
+            n_cls_tokens=args.n_cls_tokens,
+            n_stage1_layers=args.n_stage1_layers,
+            n_stage2_layers=args.n_stage2_layers,
+            icl_target_embedding=args.icl_target_embedding,
+            max_features=args.max_features,
+            n_feature_subsets=args.n_feature_subsets,
         )
     if args.model == "seldon":
         key = args.api_key or os.environ.get("NEURALK_API_KEY")

@@ -111,9 +111,17 @@ def train(
                 "mlp_hidden_size": int(model_unwrapped.mlp_hidden_size),
                 "num_outputs": int(model_unwrapped.num_outputs),
             }
-            for flag in ("target_aware", "random_perturbations", "target_encoder_use_embedding"):
+            _bool_arch_flags = (
+                "target_aware", "random_perturbations", "target_encoder_use_embedding",
+                "prenorm", "cls_compression", "icl_target_embedding",
+            )
+            _int_arch_flags = ("n_cls_tokens", "n_stage1_layers", "n_stage2_layers")
+            for flag in _bool_arch_flags:
                 if hasattr(model_unwrapped, flag):
                     architecture[flag] = bool(getattr(model_unwrapped, flag))
+            for flag in _int_arch_flags:
+                if hasattr(model_unwrapped, flag):
+                    architecture[flag] = int(getattr(model_unwrapped, flag))
             training_state = {
                 "epoch": epoch,
                 "architecture": architecture,

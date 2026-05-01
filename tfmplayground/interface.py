@@ -1,3 +1,4 @@
+import math
 import os
 
 import numpy as np
@@ -14,16 +15,22 @@ from sklearn.preprocessing import FunctionTransformer, OrdinalEncoder
 from tfmplayground.models.nanotabpfn import NanoTabPFNModel
 from tfmplayground.utils import get_default_device
 
-_P1_FLAGS = ("target_aware", "random_perturbations", "target_encoder_use_embedding")
+_MY_MODEL_FLAGS = (
+    "target_aware", "random_perturbations", "target_encoder_use_embedding",
+    "prenorm", "cls_compression", "icl_target_embedding",
+)
 
 
 def init_model_from_state_dict_file(file_path):
-    """Loads a model checkpoint, auto-detecting whether it uses the modified
-    MyNanoTabPFNModel (any P1 flag present in architecture dict) or the
-    baseline NanoTabPFNModel."""
+    """Loads a checkpoint, auto-detecting model type from the architecture dict.
+
+    Any P1/P2 modification flag present in the checkpoint means the file was
+    produced by MyNanoTabPFNModel; otherwise the baseline NanoTabPFNModel is
+    used.  Backward-compatible with all existing checkpoints.
+    """
     state_dict = torch.load(file_path, map_location=torch.device("cpu"))
     arch = state_dict["architecture"]
-    if any(f in arch for f in _P1_FLAGS):
+    if any(f in arch for f in _MY_MODEL_FLAGS):
         from tfmplayground.models.my_models import MyNanoTabPFNModel
         model = MyNanoTabPFNModel(
             num_attention_heads=arch["num_attention_heads"],
@@ -34,6 +41,12 @@ def init_model_from_state_dict_file(file_path):
             target_encoder_use_embedding=arch.get("target_encoder_use_embedding", False),
             target_aware=arch.get("target_aware", False),
             random_perturbations=arch.get("random_perturbations", False),
+            prenorm=arch.get("prenorm", False),
+            cls_compression=arch.get("cls_compression", False),
+            n_cls_tokens=arch.get("n_cls_tokens", 2),
+            n_stage1_layers=arch.get("n_stage1_layers", 3),
+            n_stage2_layers=arch.get("n_stage2_layers", 3),
+            icl_target_embedding=arch.get("icl_target_embedding", False),
         )
     else:
         model = NanoTabPFNModel(
@@ -113,6 +126,8 @@ class NanoTabPFNClassifier:
         device: None | str | torch.device = None,
         num_mem_chunks: int = 8,
         n_perturbation_samples: int = 1,
+        max_features: int | None = None,
+        n_feature_subsets: int | None = None,
     ):
         if device is None:
             device = get_default_device()
@@ -132,6 +147,8 @@ class NanoTabPFNClassifier:
         self.device = device
         self.num_mem_chunks = num_mem_chunks
         self.n_perturbation_samples = n_perturbation_samples
+        self.max_features = max_features
+        self.n_feature_subsets = n_feature_subsets
 
     def fit(self, X_train: np.ndarray, y_train: np.ndarray):
         """stores X_train and y_train for later use, also computes the highest class number occuring in num_classes"""
@@ -145,30 +162,64 @@ class NanoTabPFNClassifier:
         predicted_probabilities = self.predict_proba(X_test)
         return predicted_probabilities.argmax(axis=1)
 
-    def _predict_proba_once(self, X_test: np.ndarray) -> np.ndarray:
-        """Single forward pass — returns softmax probabilities for X_test."""
-        x = np.concatenate((self.X_train, self.feature_preprocessor.transform(X_test)))
+    def _run_forward_pass(
+        self, x_train_pre: np.ndarray, x_test_pre: np.ndarray
+    ) -> np.ndarray:
+        """Single forward pass on already-preprocessed feature arrays."""
+        x = np.concatenate((x_train_pre, x_test_pre))
         y = self.y_train
         with torch.no_grad():
             x = torch.from_numpy(x).unsqueeze(0).to(torch.float).to(self.device)
             y = torch.from_numpy(y).unsqueeze(0).to(torch.float).to(self.device)
             out = self.model(
-                (x, y), train_test_split_index=len(self.X_train), num_mem_chunks=self.num_mem_chunks
+                (x, y), train_test_split_index=len(x_train_pre),
+                num_mem_chunks=self.num_mem_chunks,
             ).squeeze(0)
             out = out[:, : self.num_classes]
             return F.softmax(out, dim=1).to("cpu").numpy()
 
+    def _predict_proba_once(self, X_test: np.ndarray) -> np.ndarray:
+        """Single forward pass (no perturbation averaging).  Preprocesses X_test."""
+        return self._run_forward_pass(
+            self.X_train, self.feature_preprocessor.transform(X_test)
+        )
+
+    def _forward_averaged(
+        self, x_train_pre: np.ndarray, x_test_pre: np.ndarray
+    ) -> np.ndarray:
+        """Forward pass averaged over n_perturbation_samples draws (Mod 2.3)."""
+        if self.n_perturbation_samples <= 1:
+            return self._run_forward_pass(x_train_pre, x_test_pre)
+        total = sum(
+            self._run_forward_pass(x_train_pre, x_test_pre)
+            for _ in range(self.n_perturbation_samples)
+        )
+        return total / self.n_perturbation_samples
+
     def predict_proba(self, X_test: np.ndarray) -> np.ndarray:
         """Returns class probabilities for X_test.
 
-        When n_perturbation_samples > 1 (intended for use with Mod 2.3
-        random_perturbations), runs n_perturbation_samples forward passes
-        with independent random draws and averages the output probabilities.
+        Supports two optional inference-time strategies that can be combined:
+          n_perturbation_samples > 1  (Mod 2.3): average over random-perturbation draws.
+          max_features               (Mod 2.6): feature subspace bagging — run on
+              n_feature_subsets random feature subsets of size max_features and
+              average the predicted probabilities.
         """
-        if self.n_perturbation_samples <= 1:
-            return self._predict_proba_once(X_test)
-        draws = [self._predict_proba_once(X_test) for _ in range(self.n_perturbation_samples)]
-        return np.mean(draws, axis=0)
+        x_test_pre = self.feature_preprocessor.transform(X_test)
+        d = self.X_train.shape[1]
+
+        if self.max_features is None or d <= self.max_features:
+            return self._forward_averaged(self.X_train, x_test_pre)
+
+        # Mod 2.6: feature subspace bagging
+        n_subsets = self.n_feature_subsets or math.ceil(d / self.max_features)
+        rng = np.random.default_rng()
+        total = None
+        for _ in range(n_subsets):
+            idx = rng.choice(d, min(self.max_features, d), replace=False)
+            p = self._forward_averaged(self.X_train[:, idx], x_test_pre[:, idx])
+            total = p if total is None else total + p
+        return total / n_subsets
 
 
 class NanoTabPFNRegressor:
