@@ -108,7 +108,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = build_parser().parse_args()
-    run_evaluation(model_factory=lambda: build_model(args), args=args)
+    return run_evaluation(model_factory=lambda: build_model(args), args=args)
 
 
 if __name__ == "__main__":
