@@ -8,13 +8,48 @@ from openml.config import set_root_cache_directory
 from openml.tasks import TaskType
 from sklearn.preprocessing import LabelEncoder
 
+TABARENA_FAST_TASKS = [
+    363614,
+    363616,
+    363619,
+    363621,
+    363623,
+    363624,
+    363626,
+    363627,
+    363628,
+    363629,
+    363632,
+    363671,
+    363674,
+    363676,
+    363677,
+    363681,
+    363682,
+    363683,
+    363684,
+    363685,
+    363689,
+    363691,
+    363694,
+    363696,
+    363700,
+    363702,
+    363704,
+    363706,
+    363707,
+    363711,
+    363712,
+]
 
 BENCHMARKS: dict[str, str] = {
     # CLI name -> OpenML study alias
     "openml-cc18": "OpenML-CC18",
     "tabarena": "tabarena-v0.1",
+    "tabarena-fast": TABARENA_FAST_TASKS,
     # Additional benchmarks (tabarena, custom splits, ...) will be registered here.
 }
+
 
 
 @dataclass
@@ -34,8 +69,11 @@ def load_benchmark_tasks(name: str, cache_dir: str | None = None) -> list[int]:
         )
     if cache_dir is not None:
         set_root_cache_directory(cache_dir)
-    suite = openml.study.get_suite(BENCHMARKS[name])
-    return list(suite.tasks)
+    if type(BENCHMARKS[name]) == str:
+        suite = openml.study.get_suite(BENCHMARKS[name])
+        return list(suite.tasks)
+    else:
+        return BENCHMARKS[name]
 
 
 def load_task(
