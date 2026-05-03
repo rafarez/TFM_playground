@@ -1,7 +1,7 @@
 RUNNAME,TRAINFLAGS,EVALFLAGS,BENCHMARK,roc_auc,roc_auc_std,accuracy,accuracy_std,log_loss,log_loss_std
-nanotabpfn,,--protocol fixed --num_mem_chunks 8,tabarena-fast,"0,851939","0,092866","0,850025","0,089962","0,35139","0,166801"
+nanotabpfn,,--protocol fixed --num_mem_chunks 8,tabarena-fast,0.851939,0.092866,0.850025,0.089962,0.35139,0.166801
 nanotabpfn,,--protocol 5fold --num_mem_chunks 8,tabarena-fast,-1,,,,,
-baseline,,--protocol fixed --num_mem_chunks 12,tabarena-fast,"0,658059","0,115125","0,718086","0,183934","0,665581","0,401802"
+baseline,,--protocol fixed --num_mem_chunks 12,tabarena-fast,0.658059,0.115125,0.718086,0.183934,0.665581,0.401802
 baseline,,--protocol 5fold --num_mem_chunks 12,tabarena-fast,-1,,,,,
 target_aware,--target_aware,--target_aware --protocol fixed --num_mem_chunks 12,tabarena-fast,0.744548028301319,0.1079959301072812,0.7483595025717611,0.1371683987714923,0.6139910349897955,0.3307978583378904
 target_embedding,--target_encoder_use_embedding,--target_encoder_use_embedding --protocol fixed --num_mem_chunks 12,tabarena-fast,0.6967211827938832,0.1150895798936337,0.7555162254912234,0.1324050035810894,0.6330538387900153,0.3550828207988273
@@ -10,3 +10,9 @@ combo_1,--target_aware --target_encoder_use_embedding,--target_aware --target_en
 combo_2,--target_aware --random_perturbations,--target_aware --random_perturbations --n_perturbation_samples 4 --protocol fixed --num_mem_chunks 12,tabarena-fast,0.7401096595722407,0.1134351752509789,0.7473269061507858,0.1366799893450783,0.614339988037794,0.3268532843239757
 combo_3,--target_encoder_use_embedding --random_perturbations,--target_encoder_use_embedding --random_perturbations --n_perturbation_samples 4 --protocol fixed --num_mem_chunks 12,tabarena-fast,0.5998722858313216,0.1222132432961492,0.7217423177431702,0.1604670310536501,0.65388173868662,0.3582159221750075
 prio_1_combo,--target_aware --target_encoder_use_embedding --random_perturbations,--target_aware --target_encoder_use_embedding --random_perturbations --n_perturbation_samples 4 --protocol fixed --num_mem_chunks 12,tabarena-fast,0.7287301088348392,0.1217535559392405,0.7487578128053344,0.1327373749289429,0.6215895538237469,0.331996320794528
+prenorm,--prenorm,--prenorm --protocol fixed --num_mem_chunks 12,tabarena-fast,,,,,,,
+cls_compression,--cls_compression,--cls_compression --protocol fixed --num_mem_chunks 12,tabarena-fast,,,,,,,
+icl_target_emb,--cls_compression --icl_target_embedding,--cls_compression --icl_target_embedding --protocol fixed --num_mem_chunks 12,tabarena-fast,,,,,,,
+prenorm_combo_1,--prenorm --target_aware --target_encoder_use_embedding,--prenorm --target_aware --target_encoder_use_embedding --protocol fixed --num_mem_chunks 12,tabarena-fast,,,,,,,
+cls_compression_combo_1,--cls_compression --target_aware --target_encoder_use_embedding,--cls_compression --target_aware --target_encoder_use_embedding --protocol fixed --num_mem_chunks 12,tabarena-fast,,,,,,,
+icl_target_emb_combo_1,--cls_compression --icl_target_embedding --target_aware --target_encoder_use_embedding,--cls_compression --icl_target_embedding --target_aware --target_encoder_use_embedding --protocol fixed --num_mem_chunks 12,tabarena-fast,,,,,,,
