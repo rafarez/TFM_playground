@@ -16,3 +16,6 @@ icl_target_emb,--cls_compression --icl_target_embedding,--cls_compression --icl_
 prenorm_combo_1,--prenorm --target_aware --target_encoder_use_embedding,--prenorm --target_aware --target_encoder_use_embedding --protocol fixed --num_mem_chunks 12,tabarena-fast,,,,,,
 cls_compression_combo_1,--cls_compression --target_aware --target_encoder_use_embedding,--cls_compression --target_aware --target_encoder_use_embedding --protocol fixed --num_mem_chunks 12,tabarena-fast,,,,,,
 icl_target_emb_combo_1,--cls_compression --icl_target_embedding --target_aware --target_encoder_use_embedding,--cls_compression --icl_target_embedding --target_aware --target_encoder_use_embedding --protocol fixed --num_mem_chunks 12,tabarena-fast,0.7467538962820889,0.113216022736848,0.7532227851933947,0.1307269558429759,0.6191900659839826,0.3413881252639825
+prenorm_target_aware,--prenorm --target_aware,--prenorm --target_aware --protocol fixed --num_mem_chunks 12,tabarena-fast,,,,,,
+cls_compression_target_aware,--cls_compression --target_aware,--cls_compression --target_aware --protocol fixed --num_mem_chunks 12,tabarena-fast,,,,,,
+icl_target_emb_target_aware,--cls_compression --icl_target_embedding --target_aware,--cls_compression --icl_target_embedding --target_aware --protocol fixed --num_mem_chunks 12,tabarena-fast,,,,,,
