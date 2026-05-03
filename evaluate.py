@@ -90,6 +90,22 @@ def build_parser() -> argparse.ArgumentParser:
                    help="[mynanotabpfn] Mod 2.4: inject class label into compressed "
                         "row embeddings before Stage 2 (TabICLv2 double injection).")
 
+    # mynanotabpfn — Priority 3 flags
+    p.add_argument("--feature_grouping", action="store_true",
+                   help="[mynanotabpfn] Mod 2.2: circular grouped FeatureEncoder — "
+                        "nn.Linear(3, d) instead of nn.Linear(1, d). Only meaningful "
+                        "at m >= 7; degenerate at m=3 (training prior).")
+    p.add_argument("--gated_residuals", action="store_true",
+                   help="[mynanotabpfn] Mod 2.8: softplus-gated residual connections — "
+                        "one scalar gate per sublayer, initialised to scale ≈1.")
+    p.add_argument("--multi_layer_decoder", action="store_true",
+                   help="[mynanotabpfn] Mod 2.9: concatenate intermediate-layer embeddings "
+                        "before the decoder.")
+    p.add_argument("--decoder_layer_indices", type=str, default=None,
+                   help="[mynanotabpfn] Mod 2.9: comma-separated 1-based layer indices to "
+                        "extract (e.g. '2,4,6'). Defaults to all layers when "
+                        "--multi_layer_decoder is active.")
+
     # Mod 2.6 — feature subspace bagging (applies to nanotabpfn and mynanotabpfn)
     p.add_argument("--max_features", type=int, default=None,
                    help="Mod 2.6: max features per forward pass. When the dataset has "

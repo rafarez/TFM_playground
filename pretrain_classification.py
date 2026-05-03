@@ -62,6 +62,18 @@ parser.add_argument("--n_stage2_layers", type=int, default=3,
 parser.add_argument("--icl_target_embedding", action="store_true",
                     help="Mod 2.4: inject class label into compressed row embeddings before Stage 2.")
 
+# Priority 3 architectural modifications
+parser.add_argument("--feature_grouping", action="store_true",
+                    help="Mod 2.2: circular grouped FeatureEncoder — nn.Linear(3, d) instead of nn.Linear(1, d). "
+                         "Only meaningful at m >= 7; degenerate at m=3 (training prior).")
+parser.add_argument("--gated_residuals", action="store_true",
+                    help="Mod 2.8: scale each residual branch by softplus(gate), one scalar gate per sublayer.")
+parser.add_argument("--multi_layer_decoder", action="store_true",
+                    help="Mod 2.9: concatenate embeddings from multiple intermediate layers before the decoder.")
+parser.add_argument("--decoder_layer_indices", type=str, default=None,
+                    help="Mod 2.9: comma-separated 1-based layer indices to extract (e.g. '2,4,6'). "
+                         "Defaults to all layers when --multi_layer_decoder is active.")
+
 args = parser.parse_args()
 
 set_randomness_seed(2402)
@@ -98,6 +110,14 @@ model = MyNanoTabPFNModel(
     n_stage1_layers=args.n_stage1_layers,
     n_stage2_layers=args.n_stage2_layers,
     icl_target_embedding=args.icl_target_embedding,
+    # P3
+    feature_grouping=args.feature_grouping,
+    gated_residuals=args.gated_residuals,
+    multi_layer_decoder=args.multi_layer_decoder,
+    decoder_layer_indices=(
+        [int(x) for x in args.decoder_layer_indices.split(",")]
+        if args.decoder_layer_indices else None
+    ),
 )
 
 if ckpt:

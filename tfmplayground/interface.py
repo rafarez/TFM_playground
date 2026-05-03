@@ -18,15 +18,16 @@ from tfmplayground.utils import get_default_device
 _MY_MODEL_FLAGS = (
     "target_aware", "random_perturbations", "target_encoder_use_embedding",
     "prenorm", "cls_compression", "icl_target_embedding",
+    "feature_grouping", "gated_residuals", "multi_layer_decoder",
 )
 
 
 def init_model_from_state_dict_file(file_path):
     """Loads a checkpoint, auto-detecting model type from the architecture dict.
 
-    Any P1/P2 modification flag present in the checkpoint means the file was
-    produced by MyNanoTabPFNModel; otherwise the baseline NanoTabPFNModel is
-    used.  Backward-compatible with all existing checkpoints.
+    Any modification flag present means the file was produced by
+    MyNanoTabPFNModel; otherwise the baseline NanoTabPFNModel is used.
+    Backward-compatible with all existing checkpoints.
     """
     state_dict = torch.load(file_path, map_location=torch.device("cpu"))
     arch = state_dict["architecture"]
@@ -47,6 +48,10 @@ def init_model_from_state_dict_file(file_path):
             n_stage1_layers=arch.get("n_stage1_layers", 3),
             n_stage2_layers=arch.get("n_stage2_layers", 3),
             icl_target_embedding=arch.get("icl_target_embedding", False),
+            feature_grouping=arch.get("feature_grouping", False),
+            gated_residuals=arch.get("gated_residuals", False),
+            multi_layer_decoder=arch.get("multi_layer_decoder", False),
+            decoder_layer_indices=arch.get("decoder_layer_indices", None),
         )
     else:
         model = NanoTabPFNModel(
@@ -220,6 +225,79 @@ class NanoTabPFNClassifier:
             p = self._forward_averaged(self.X_train[:, idx], x_test_pre[:, idx])
             total = p if total is None else total + p
         return total / n_subsets
+
+
+    def extract_features(
+        self,
+        X: np.ndarray,
+        y: np.ndarray,
+        n_folds: int = 10,
+    ) -> np.ndarray:
+        """Mod 2.10: leave-one-fold-out feature extraction.
+
+        Partitions (X, y) into n_folds stratified folds.  For each fold the
+        remaining folds form the in-context training set and the model runs a
+        standard forward pass treating the held-out fold as test.  The
+        pre-decoder embedding is captured via a forward hook and aligned back
+        to the original sample order.
+
+        fit() must be called first (the stored feature preprocessor is used
+        to preprocess X before each fold's forward pass).
+
+        Returns:
+            np.ndarray of shape (n_samples, embedding_dim) — the pre-decoder
+            embedding for every sample in X.
+        """
+        from sklearn.model_selection import KFold, StratifiedKFold
+
+        X_pre = self.feature_preprocessor.transform(X)
+        n = len(y)
+        embeddings: np.ndarray | None = None
+
+        # Capture the input to decoder.linear1 (= the pre-decoder embedding)
+        captured: list[torch.Tensor] = []
+
+        def _hook(module, inp, out):  # noqa: ARG001
+            captured.append(inp[0].detach().cpu())
+
+        handle = self.model.decoder.linear1.register_forward_pre_hook(_hook)
+
+        try:
+            # Fall back to non-stratified if any class has < 2 samples
+            min_count = int(np.bincount(y).min()) if y.dtype.kind in "iu" else 2
+            if min_count >= 2:
+                kf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=42)
+                splits = list(kf.split(X_pre, y))
+            else:
+                kf = KFold(n_splits=n_folds, shuffle=True, random_state=42)
+                splits = list(kf.split(X_pre))
+
+            for train_idx, test_idx in splits:
+                x_tr = X_pre[train_idx]
+                y_tr = y[train_idx]
+                x_te = X_pre[test_idx]
+
+                captured.clear()
+                with torch.no_grad():
+                    x = np.concatenate((x_tr, x_te))
+                    x_t = torch.from_numpy(x).unsqueeze(0).to(torch.float).to(self.device)
+                    y_t = torch.from_numpy(y_tr).unsqueeze(0).to(torch.float).to(self.device)
+                    self.model(
+                        (x_t, y_t),
+                        train_test_split_index=len(x_tr),
+                        num_mem_chunks=self.num_mem_chunks,
+                    )
+
+                # captured[0]: (1, n_test_fold, emb_dim) after squeeze → (n_test_fold, emb_dim)
+                fold_emb = captured[0].squeeze(0).numpy()
+                if embeddings is None:
+                    embeddings = np.zeros((n, fold_emb.shape[1]), dtype=np.float32)
+                embeddings[test_idx] = fold_emb
+
+        finally:
+            handle.remove()
+
+        return embeddings
 
 
 class NanoTabPFNRegressor:

@@ -111,17 +111,16 @@ def train(
                 "mlp_hidden_size": int(model_unwrapped.mlp_hidden_size),
                 "num_outputs": int(model_unwrapped.num_outputs),
             }
-            _bool_arch_flags = (
-                "target_aware", "random_perturbations", "target_encoder_use_embedding",
-                "prenorm", "cls_compression", "icl_target_embedding",
-            )
-            _int_arch_flags = ("n_cls_tokens", "n_stage1_layers", "n_stage2_layers")
-            for flag in _bool_arch_flags:
+            from tfmplayground.models.my_models import _BOOL_FLAGS, _INT_FLAGS, _LIST_FLAGS
+            for flag in _BOOL_FLAGS:
                 if hasattr(model_unwrapped, flag):
                     architecture[flag] = bool(getattr(model_unwrapped, flag))
-            for flag in _int_arch_flags:
+            for flag in _INT_FLAGS:
                 if hasattr(model_unwrapped, flag):
                     architecture[flag] = int(getattr(model_unwrapped, flag))
+            for flag in _LIST_FLAGS:
+                if hasattr(model_unwrapped, flag):
+                    architecture[flag] = getattr(model_unwrapped, flag)  # list or None
             training_state = {
                 "epoch": epoch,
                 "architecture": architecture,

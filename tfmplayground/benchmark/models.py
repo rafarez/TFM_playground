@@ -120,6 +120,11 @@ class MyNanoTabPFNEvalModel(BaseEvaluatedModel):
         n_stage1_layers: int = 3,
         n_stage2_layers: int = 3,
         icl_target_embedding: bool = False,
+        # P3
+        feature_grouping: bool = False,
+        gated_residuals: bool = False,
+        multi_layer_decoder: bool = False,
+        decoder_layer_indices: list[int] | None = None,
         # Mod 2.6
         max_features: int | None = None,
         n_feature_subsets: int | None = None,
@@ -145,6 +150,10 @@ class MyNanoTabPFNEvalModel(BaseEvaluatedModel):
                 n_stage1_layers=n_stage1_layers,
                 n_stage2_layers=n_stage2_layers,
                 icl_target_embedding=icl_target_embedding,
+                feature_grouping=feature_grouping,
+                gated_residuals=gated_residuals,
+                multi_layer_decoder=multi_layer_decoder,
+                decoder_layer_indices=decoder_layer_indices,
             )
 
         self._model = NanoTabPFNClassifier(
@@ -189,6 +198,13 @@ def build_model(args) -> BaseEvaluatedModel:
             n_stage1_layers=args.n_stage1_layers,
             n_stage2_layers=args.n_stage2_layers,
             icl_target_embedding=args.icl_target_embedding,
+            feature_grouping=args.feature_grouping,
+            gated_residuals=args.gated_residuals,
+            multi_layer_decoder=args.multi_layer_decoder,
+            decoder_layer_indices=(
+                [int(x) for x in args.decoder_layer_indices.split(",")]
+                if args.decoder_layer_indices else None
+            ),
             max_features=args.max_features,
             n_feature_subsets=args.n_feature_subsets,
         )
