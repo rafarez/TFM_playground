@@ -30,4 +30,7 @@ icl_target_emb_5_1_target_aware,--cls_compression --icl_target_embedding --n_sta
 feature_grouping,--feature_grouping,--feature_grouping --protocol fixed --num_mem_chunks 12,tabarena-fast,0.6432549025187307,0.1144695237787504,0.6893309168840225,0.2182913194625902,0.6843791506685875,0.4417002304627938
 gated_residuals,--gated_residuals,--gated_residuals --protocol fixed --num_mem_chunks 12,tabarena-fast,0.6581407947097008,0.1150036059468475,0.7179112617174233,0.1840993518450838,0.6664089259057208,0.4030187790964529
 multi_layer_decoder,--multi_layer_decoder,--multi_layer_decoder --protocol fixed --num_mem_chunks 12,tabarena-fast,0.612303105144297,0.1276059266502101,0.7209745811299565,0.1718472078519572,0.6425866556284702,0.3450948947301572
+cls_compression_target_aware_feature_grouping,--cls_compression --target_aware --feature_grouping,--cls_compression --target_aware --feature_grouping --protocol fixed --num_mem_chunks 12,tabarena-fast,,,,,,
+cls_compression_target_aware_gated_residuals,--cls_compression --target_aware --gated_residuals,--cls_compression --target_aware --gated_residuals --protocol fixed --num_mem_chunks 12,tabarena-fast,,,,,,
+cls_compression_target_aware_multi_layer_decoder,--cls_compression --target_aware --multi_layer_decoder,--cls_compression --target_aware --multi_layer_decoder --protocol fixed --num_mem_chunks 12,tabarena-fast,,,,,,
 max_features_3,--max_features 3,--max_features 3 --protocol fixed --num_mem_chunks 12,tabarena-fast,,,,,,
