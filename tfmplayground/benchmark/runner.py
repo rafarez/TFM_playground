@@ -66,6 +66,7 @@ def run_evaluation(
           f"({args.benchmark}, protocol={args.protocol}, seed={args.seed})")
 
     rows: list[dict] = []
+    model = model_factory()
     for task_id in task_ids:
         try:
             task = load_task(
@@ -101,7 +102,6 @@ def run_evaluation(
 
             t0 = time.perf_counter()
             try:
-                model = model_factory()
                 model.fit(X_tr, y_tr)
                 proba_chunks = [
                     model.predict_proba(X_te[start:start + args.batch_size])
