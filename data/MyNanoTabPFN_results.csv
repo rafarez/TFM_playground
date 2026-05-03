@@ -2,7 +2,8 @@ RUNNAME,TRAINFLAGS,EVALFLAGS,BENCHMARK,roc_auc,roc_auc_std,accuracy,accuracy_std
 nanotabpfn,,--protocol fixed --num_mem_chunks 8,tabarena-fast,0.851939,0.092866,0.850025,0.089962,0.35139,0.166801
 nanotabpfn,,--protocol 5fold --num_mem_chunks 8,tabarena-fast,-1,,,,,
 baseline,,--protocol fixed --num_mem_chunks 12,tabarena-fast,0.658059,0.115125,0.718086,0.183934,0.665581,0.401802
-baseline,,--protocol 5fold --num_mem_chunks 12,tabarena-fast,-1,,,,,
+baseline,,--protocol 5fold --num_mem_chunks 16,tabarena,,,,,,
+baseline,,--protocol 5fold --num_mem_chunks 16,openml-cc18,,,,,,
 target_aware,--target_aware,--target_aware --protocol fixed --num_mem_chunks 12,tabarena-fast,0.744548028301319,0.1079959301072812,0.7483595025717611,0.1371683987714923,0.6139910349897955,0.3307978583378904
 target_embedding,--target_encoder_use_embedding,--target_encoder_use_embedding --protocol fixed --num_mem_chunks 12,tabarena-fast,0.6967211827938832,0.1150895798936337,0.7555162254912234,0.1324050035810894,0.6330538387900153,0.3550828207988273
 random_pert,--random_perturbations,--random_perturbations --n_perturbation_samples 4 --protocol fixed --num_mem_chunks 12,tabarena-fast,0.5721055911698979,0.135127605490579,0.7198932512899918,0.1651515353113601,0.6501467007168701,0.3579880296029118
@@ -33,4 +34,6 @@ multi_layer_decoder,--multi_layer_decoder,--multi_layer_decoder --protocol fixed
 cls_compression_target_aware_feature_grouping,--cls_compression --target_aware --feature_grouping,--cls_compression --target_aware --feature_grouping --protocol fixed --num_mem_chunks 12,tabarena-fast,,,,,,
 cls_compression_target_aware_gated_residuals,--cls_compression --target_aware --gated_residuals,--cls_compression --target_aware --gated_residuals --protocol fixed --num_mem_chunks 12,tabarena-fast,,,,,,
 cls_compression_target_aware_multi_layer_decoder,--cls_compression --target_aware --multi_layer_decoder,--cls_compression --target_aware --multi_layer_decoder --protocol fixed --num_mem_chunks 12,tabarena-fast,,,,,,
-max_features_3,--max_features 3,--max_features 3 --protocol fixed --num_mem_chunks 12,tabarena-fast,,,,,,
+max_features_3,,--max_features 3 --protocol fixed --num_mem_chunks 12,tabarena-fast,,,,,,
+cls_compression_target_aware,--cls_compression --target_aware,--cls_compression --target_aware --protocol 5fold --num_mem_chunks 16,tabarena,,,,,,
+cls_compression_target_aware,--cls_compression --target_aware,--cls_compression --target_aware --protocol 5fold --num_mem_chunks 16,openml-cc18,,,,,,
