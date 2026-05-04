@@ -1,0 +1,4 @@
+RUNNAME,TRAINFLAGS,EVALFLAGS,BENCHMARK,roc_auc,roc_auc_std,accuracy,accuracy_std,log_loss,log_loss_std
+nanotabpfn,,--protocol fixed --num_mem_chunks 12,tabarena-fast,,,,,,
+baseline,,--protocol fixed --num_mem_chunks 12,tabarena-fast,,,,,,
+target_aware,--target_aware,--target_aware --protocol fixed --num_mem_chunks 12,tabarena-fast,,,,,,
