@@ -452,7 +452,7 @@ class MyNanoTabPFNModel(nn.Module):
 
         # Step 3 (Mod 2.1): target-aware early embedding on training rows
         if self.target_aware:
-            y_idx = y_src_indices[:, :, 0].long()
+            y_idx = y_src_indices[:, :, 0].long().clamp(0, self.num_outputs - 1)
             class_emb = self.early_class_embedding(y_idx)              # (B, n_train, d)
             train_feat = x_src[:, :train_test_split_index] + class_emb.unsqueeze(2)
             x_src = torch.cat([train_feat, x_src[:, train_test_split_index:]], dim=1)
@@ -478,7 +478,7 @@ class MyNanoTabPFNModel(nn.Module):
                                       self.n_cls_tokens * self.embedding_size)
 
             if self.icl_target_embedding:
-                y_idx = y_src_indices[:, :, 0].long()
+                y_idx = y_src_indices[:, :, 0].long().clamp(0, self.num_outputs - 1)
                 icl_emb = self.icl_class_embedding(y_idx)
                 train_row = row_emb[:, :train_test_split_index] + icl_emb
                 row_emb = torch.cat([train_row, row_emb[:, train_test_split_index:]], dim=1)
