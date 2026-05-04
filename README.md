@@ -36,12 +36,11 @@ print("Accuracy", accuracy_score(y_test, predictions))
 
 ### NanoTabPFN Code
 
-`tfmplayground/models/nanotabpfn.py` contains the implementation of the architecture in less than 300 lines of code. 
-`tfmplayground/models/my_models.py` implements an extension of the NanoTabPFN model with all the possible modifications we implemented. An in-depth explanation of these modifications can be found below in this document.
-`tfmplayground/train.py` implements a simple training loop in under 200 lines and `tfmplayground/external_priors/` provides an interface to publicly available priors form other repositories as well as a dataloader for loading HDF5 dumps.
-We will release multiple dumps of different scales soon. We also offer an interface where you can provide your own get\_batch function.
-`tfmplayground/benchmarks/` provides all the elements for in-depth evaluation of our models for several metrics, easy inclusion of new benchmarks, and an abstract model builder that adapts to models not produced by this codebase, such as Seldon from Neuralk.
-`pipeline_notebook.ipynb` gives a line-by-line rundown on how to pretrain and test a model described in the experiments file.
+- `tfmplayground/models/nanotabpfn.py` contains the implementation of the architecture in less than 300 lines of code. 
+- `tfmplayground/models/my_models.py` implements an extension of the NanoTabPFN model with all the possible modifications we implemented. An in-depth explanation of these modifications can be found below in this document.
+- `tfmplayground/train.py` implements a simple training loop in under 200 lines and `tfmplayground/external_priors/` provides an interface to publicly available priors form other repositories as well as a dataloader for loading HDF5 dumps.
+- `tfmplayground/benchmarks/` provides all the elements for in-depth evaluation of our models for several metrics, easy inclusion of new benchmarks, and an abstract model builder that adapts to models not produced by this codebase, such as Seldon from Neuralk.
+- `pipeline_notebook.ipynb` gives a line-by-line rundown on how to pretrain and test a model described in the experiments file.
 
 ### Pretrain your own small nanoTabPFN
 First we download 100k pre-generated datasets with 50 datapoints, 3 features and up to 3 classes each from [here](https://ml.informatik.uni-freiburg.de/research-artifacts/pfefferle/TFM-Playground/50x3_3_100k_classification.h5).
@@ -96,6 +95,10 @@ trained_model, loss = train(
 
 ---
 
+## Run the pretrain/test pipeline on Google Colab
+
+Follow the instructions of `pipeline_notebook.ipynb` to run the full pipeline on a Colab server.
+
 ## Architectural Modifications (MyNanoTabPFN)
 
 `tfmplayground/models/my_models.py` contains `MyNanoTabPFNModel`, an extended version of nanoTabPFN that supports all modifications described below via opt-in flags. All flags default to `False`/`None`, reproducing the baseline exactly when no flags are set.
@@ -132,12 +135,13 @@ python pretrain_classification.py --prenorm --cls_compression \
 |---|---|---|
 | `--prenorm` | PN | Switch all three sublayers (feature-attn, datapoint-attn, MLP) from post-norm to pre-norm. Adds a final `LayerNorm(d)` after the last transformer layer, before the decoder. Prerequisite for stable training at greater depth. Source: TabICLv2. |
 | `--cls_compression` | CLS | Split the transformer into Stage 1 (bi-attention with K CLS tokens, `--n_stage1_layers`) and Stage 2 (plain self-attention on compressed row embeddings, `--n_stage2_layers`). After Stage 1 the K CLS outputs per row are concatenated into a `K·d`-dim row embedding; the decoder reads this. Use `--icl_target_embedding` to inject a second class label (separate embedding) into the compressed row embeddings before Stage 2. Source: TabICLv2. |
-| `--max_features` | MaxF | Inference-time only. Feature subspace bagging: when the dataset has more features than `--max_features`, randomly sample `ceil(d / max_features)` subsets of that size, run inference on each, and average the predicted probabilities. Recommended value: 3 (the training distribution). |
+
 
 ### Miscellaneous modifications
 
 | Flag | Modification code | Description |
 |---|---|---|
+| `--max_features` | MaxF | Feature subspace bagging (Inference-time only.): when the dataset has more features than `--max_features`, randomly sample `ceil(d / max_features)` subsets of that size, run inference on each, and average the predicted probabilities. Recommended value: 3 (the training distribution). |
 | `--feature_grouping` | FG | Replace the per-scalar `nn.Linear(1, d)` in FeatureEncoder with a circular grouped encoding: for column `j` the input is `[x_j, x_{(j+1)%m}, x_{(j+3)%m}]` and a shared `nn.Linear(3, d)` is applied. Degenerate at `m=3` (every group contains all 3 features); meaningful only at `m ≥ 7`. Source: TabICLv2. |
 | `--gated_residuals` | GR | Replace `x + sublayer(x)` with `x + softplus(gate) · sublayer(x)` in every sublayer. One scalar `gate` per sublayer per layer, initialised so `softplus(gate) ≈ 1` (baseline scale at init). |
 | `--multi_layer_decoder` | DMLP | Extract pre-decoder embeddings from multiple intermediate transformer layers and concatenate them before the decoder. Specify layers with `--decoder_layer_indices 2,4,6` (1-based); defaults to all layers. The decoder input dimension scales accordingly. Source: Ye et al. 2025. |
